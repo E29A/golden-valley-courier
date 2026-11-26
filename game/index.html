@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Golden Valley Courier</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1a2a44; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #hud { position: fixed; inset: 0; pointer-events: none; color: #f5f0dc; }
+  .panel { background: rgba(10, 18, 32, 0.62); border: 1px solid rgba(245, 240, 220, 0.28); border-radius: 8px; }
+  #tape { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: 420px; padding: 6px 0 4px; text-align: center; }
+  #tape .hdg { font-size: 26px; font-weight: 700; letter-spacing: 2px; color: #ffd75e; }
+  #tape .ticks { font-size: 11px; letter-spacing: 3px; color: #cfe3ff; }
+  #alt { position: absolute; top: 86px; left: 12px; padding: 8px 12px; min-width: 108px; }
+  #spd { position: absolute; top: 86px; right: 12px; padding: 8px 12px; min-width: 108px; text-align: right; }
+  .big { font-size: 30px; font-weight: 700; color: #ffd75e; line-height: 1; }
+  .lbl { font-size: 11px; letter-spacing: 2px; color: #cfe3ff; }
+  .sub { font-size: 13px; color: #f5f0dc; }
+  #mission { position: absolute; top: 10px; left: 12px; padding: 8px 12px; max-width: 300px; }
+  #score { position: absolute; top: 10px; right: 12px; padding: 8px 12px; text-align: right; min-width: 150px; }
+  #horizon { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); width: 210px; height: 104px; }
+  #horizon canvas { width: 100%; height: 100%; display: block; border-radius: 8px; }
+  #fuelbar { position: absolute; left: 12px; bottom: 12px; padding: 8px 12px; width: 190px; }
+  #fuelbar .track { height: 10px; background: #22304a; border-radius: 5px; margin-top: 4px; overflow: hidden; }
+  #fuelbar .fill { height: 100%; width: 100%; background: #7dd87d; }
+  #throttle { position: absolute; right: 12px; bottom: 12px; padding: 8px 12px; width: 150px; text-align: right; }
+  #msg { position: absolute; left: 50%; top: 34%; transform: translateX(-50%); font-size: 30px; font-weight: 700; color: #ffd75e; text-shadow: 0 2px 10px rgba(0,0,0,0.7); text-align: center; white-space: pre-line; }
+  #submsg { position: absolute; left: 50%; top: 42%; transform: translateX(-50%); font-size: 15px; color: #f5f0dc; text-shadow: 0 1px 6px rgba(0,0,0,0.8); text-align: center; white-space: pre-line; }
+  #ringmark { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); font-size: 13px; letter-spacing: 2px; color: #8ef1ff; text-shadow: 0 1px 6px rgba(0,0,0,0.8); }
+  #title { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(8, 14, 26, 0.45); pointer-events: auto; }
+  #title h1 { font-size: 44px; margin: 0; color: #ffd75e; text-shadow: 0 3px 14px rgba(0,0,0,0.8); letter-spacing: 1px; }
+  #title p { font-size: 16px; color: #f5f0dc; max-width: 560px; text-align: center; line-height: 1.5; margin: 12px 0; }
+  #title .keys { font-size: 13px; color: #cfe3ff; background: rgba(10,18,32,0.7); border: 1px solid rgba(245,240,220,0.3); border-radius: 8px; padding: 10px 16px; line-height: 1.7; }
+  #title button { pointer-events: auto; margin-top: 16px; font-size: 18px; font-weight: 700; padding: 10px 26px; border-radius: 8px; border: none; background: #ffd75e; color: #1a2a44; cursor: pointer; }
+  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .warn { color: #ff7a6b !important; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js" } }
+</script>
+</head>
+<body>
+<canvas id="scene" aria-label="Golden Valley Courier: fly the courier plane through the rings and land it"></canvas>
+<div id="hud">
+  <div id="mission" class="panel"><div class="lbl" id="missionName">RING RUN</div><div class="sub" id="missionGoal">Fly all 12 rings, then land on Runway 27</div></div>
+  <div id="score" class="panel"><div class="big" id="scoreVal">0</div><div class="lbl">SCORE &nbsp;·&nbsp; <span id="timeVal">0:00</span></div><div class="sub" id="ringVal">Ring 0 / 12</div></div>
+  <div id="tape" class="panel"><div class="hdg" id="hdgVal">090°</div><div class="ticks" id="tapeTicks">— 060 — 090 — 120 —</div></div>
+  <div id="alt" class="panel"><div class="big" id="altVal">0</div><div class="lbl">ALT FT &nbsp;·&nbsp; <span id="aglVal">AGL 0</span></div><div class="sub" id="vsiVal">VSI 0 ft/min</div></div>
+  <div id="spd" class="panel"><div class="big" id="spdVal">0</div><div class="lbl">KNOTS &nbsp;·&nbsp; <span id="thrVal">THR 0%</span></div><div class="sub" id="flapVal">FLAPS UP</div></div>
+  <div id="horizon" class="panel"><canvas id="horizonCanvas" width="210" height="104"></canvas></div>
+  <div id="fuelbar" class="panel"><div class="lbl">FUEL <span id="fuelVal">100%</span></div><div class="track"><div class="fill" id="fuelFill"></div></div><div class="sub" id="dmgVal">AIRFRAME 100%</div></div>
+  <div id="throttle" class="panel"><div class="lbl">THROTTLE</div><div class="big" id="thrBig">0%</div><div class="sub">W/S throttle · Arrows fly · C camera</div></div>
+  <div id="msg"></div>
+  <div id="submsg"></div>
+  <div id="ringmark"></div>
+  <div id="title">
+    <h1>GOLDEN VALLEY COURIER</h1>
+    <p>Sunset mail run across Golden Valley. Thread every ring, mind your fuel, and put her down soft on Runway 27. A hard landing bends the airframe — a gentle one pays.</p>
+    <div class="keys">W / S — throttle &nbsp;·&nbsp; ↑ ↓ — pitch &nbsp;·&nbsp; ← → — bank &nbsp;·&nbsp; A / D — rudder<br>SPACE — brake &nbsp;·&nbsp; C — chase / cockpit &nbsp;·&nbsp; P — pause &nbsp;·&nbsp; R — restart &nbsp;·&nbsp; M — mute<br>1 — Ring Run &nbsp;·&nbsp; 2 — Canyon Slalom &nbsp;·&nbsp; 3 — Precision Landing</div>
+    <button id="startBtn">TAKE OFF — ENTER</button>
+  </div>
+</div>
+<p id="status" role="status" aria-live="polite"></p>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
